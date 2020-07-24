@@ -6,6 +6,10 @@ import (
 	"fmt"
 	"net/http"
 	"strings"
+	"time"
+
+	"github.com/a-soliman/projects/myEvents/src/contracts"
+	"github.com/a-soliman/projects/myEvents/src/lib/msgqueue"
 
 	"github.com/a-soliman/projects/myEvents/src/lib/persistence"
 	"github.com/gorilla/mux"
@@ -13,13 +17,14 @@ import (
 
 // EventServiceHandler service handler
 type EventServiceHandler struct {
-	dbhandler persistence.DatabaseHandler
+	dbhandler    persistence.DatabaseHandler
+	eventEmitter msgqueue.EventEmitter
 }
 
-// New returns a pointer
-func New(databasehandler persistence.DatabaseHandler) *EventServiceHandler {
+func newEventHandler(databasehandler persistence.DatabaseHandler, eventEmitter msgqueue.EventEmitter) *EventServiceHandler {
 	return &EventServiceHandler{
-		dbhandler: databasehandler,
+		dbhandler:    databasehandler,
+		eventEmitter: eventEmitter,
 	}
 }
 
@@ -95,5 +100,13 @@ func (eh *EventServiceHandler) NewEventHandler(w http.ResponseWriter, r *http.Re
 		fmt.Fprintf(w, "{error: Error occurred while persisting event id = %d. err = %s}", id, err)
 		return
 	}
+	msg := contracts.EventCreatedEvent{
+		ID:         hex.EncodeToString(id),
+		Name:       event.Name,
+		LocationID: string(event.Location.ID),
+		Start:      time.Unix(event.StartDate, 0),
+		End:        time.Unix(event.EndDate, 0),
+	}
+	eh.eventEmitter.Emit(&msg)
 	fmt.Fprint(w, id)
 }

@@ -3,13 +3,14 @@ package rest
 import (
 	"net/http"
 
+	"github.com/a-soliman/projects/myEvents/src/lib/msgqueue"
 	"github.com/a-soliman/projects/myEvents/src/lib/persistence"
 	"github.com/gorilla/mux"
 )
 
 // ServeAPI runs and serves the API
-func ServeAPI(endpoint string, tlsendpoint string, dbHandler persistence.DatabaseHandler) (chan error, chan error) {
-	handler := New(dbHandler)
+func ServeAPI(endpoint string, tlsendpoint string, dbHandler persistence.DatabaseHandler, eventEmitter msgqueue.EventEmitter) (chan error, chan error) {
+	handler := newEventHandler(dbHandler, eventEmitter)
 	r := mux.NewRouter()
 	eventsRouter := r.PathPrefix("/events").Subrouter()
 	eventsRouter.Methods("GET").Path("/{SearchCriteria}/{search}").HandlerFunc(handler.FindEventHandler)
